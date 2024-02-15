@@ -80,50 +80,48 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
             final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
             // AdvertisementContent attributes:contentId, renderableContent, marketplaceId
 
-            if (CollectionUtils.isNotEmpty(contents)) {
-                List<String> contentIds = contents.stream()
-                        .map(AdvertisementContent::getContentId)
-                        .distinct()
-                        .collect(Collectors.toList());
+            List<String> contentIds = contents.stream()
+                    .map(AdvertisementContent::getContentId)
+                    .distinct()
+                    .collect(Collectors.toList());
 
-                // TargetingGroup attribute: targetingGroupId, contentId, clickThroughRate,
-                //                          List<TargetingPredicate> targetingPredicates
-                List<TargetingGroup> targetingGroups = new ArrayList<>();
-                for (String contentId: contentIds) {
-                    targetingGroups.addAll(targetingGroupDao.get(contentId));
-                }
-
-                // Use TargetingEvaluator class to help filter out
-                // the ads that a customer is not eligible for.
-                // TargetingEvaluator constructor requires a RequestContext object
-                // You can construct a RequestContext object with its required parameters
-                TargetingEvaluator targetingEvaluator
-                        = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
-
-                // Filter all the eligible Targeting Groups
-                // Then sort it by CTR, then find the first eligible Targeting Group
-                Optional<TargetingGroup> firstEligibleTargetingGroup = targetingGroups.stream()
-                        .filter(targetingGroup -> targetingEvaluator.evaluate(targetingGroup).equals(TargetingPredicateResult.TRUE))
-                        .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
-                        .findFirst();
-
-                // Then randomly return one of the ads that the customer is eligible for (if any).
-                if (firstEligibleTargetingGroup.isPresent()) {
-                    for (AdvertisementContent content: contents) {
-                        if (firstEligibleTargetingGroup.get().getContentId().equals(content.getContentId())) {
-                            return new GeneratedAdvertisement(content);
-                        }
-                    }
-
-                }
+            // TargetingGroup attribute: targetingGroupId, contentId, clickThroughRate,
+            //                          List<TargetingPredicate> targetingPredicates
+            List<TargetingGroup> targetingGroups = new ArrayList<>();
+            for (String contentId: contentIds) {
+                targetingGroups.addAll(targetingGroupDao.get(contentId));
             }
+
+            // Use TargetingEvaluator class to help filter out
+            // the ads that a customer is not eligible for.
+            // TargetingEvaluator constructor requires a RequestContext object
+            // You can construct a RequestContext object with its required parameters
+            TargetingEvaluator targetingEvaluator
+                    = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+
+            // Filter all the eligible Targeting Groups
+            // Then sort it by CTR, then find the first eligible Targeting Group
+            Optional<TargetingGroup> firstEligibleTargetingGroup = targetingGroups.stream()
+                    .filter(targetingGroup -> targetingEvaluator.evaluate(targetingGroup).equals(TargetingPredicateResult.TRUE))
+                    .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
+                    .findFirst();
+
+            // Then randomly return one of the ads that the customer is eligible for (if any).
+            if (firstEligibleTargetingGroup.isPresent()) {
+                for (AdvertisementContent content: contents) {
+                    if (firstEligibleTargetingGroup.get().getContentId().equals(content.getContentId())) {
+                        return new GeneratedAdvertisement(content);
+                    }
+                }
+
+            }
+        }
 
 //old code
             //            if (CollectionUtils.isNotEmpty(contents)) {
 //                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
 //                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
 //            }
-        }
 
         return generatedAdvertisement;
     }
