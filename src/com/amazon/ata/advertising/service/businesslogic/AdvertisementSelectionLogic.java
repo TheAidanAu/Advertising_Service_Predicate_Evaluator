@@ -107,9 +107,13 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
                     .findFirst();
 
             // Then randomly return one of the ads that the customer is eligible for (if any).
+            // Since it's an Optional, you need to check the wrapper box before opening it,
+            // otherwise there'll be an exception
             if (firstEligibleTargetingGroup.isPresent()) {
+                // Get the contentId of this Targeting Group
+                String contentId = firstEligibleTargetingGroup.get().getContentId();
                 for (AdvertisementContent content: contents) {
-                    if (firstEligibleTargetingGroup.get().getContentId().equals(content.getContentId())) {
+                    if (content.getContentId().equals(contentId)) {
                         return new GeneratedAdvertisement(content);
                     }
                 }
