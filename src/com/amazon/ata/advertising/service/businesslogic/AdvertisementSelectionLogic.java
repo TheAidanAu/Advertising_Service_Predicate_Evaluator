@@ -81,13 +81,6 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
             // AdvertisementContent attributes:contentId, renderableContent, marketplaceId
 
             if (CollectionUtils.isNotEmpty(contents)) {
-                // Use TargetingEvaluator class to help filter out
-                // the ads that a customer is not eligible for.
-                // TargetingEvaluator constructor requires a RequestContext object
-                // You can construct a RequestContext object with its required parameters
-                TargetingEvaluator targetingEvaluator
-                        = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
-
                 List<String> contentIds = contents.stream()
                         .map(AdvertisementContent::getContentId)
                         .distinct()
@@ -100,12 +93,18 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
                     targetingGroups.addAll(targetingGroupDao.get(contentId));
                 }
 
-                List<TargetingGroup> targetingGroupsSorted = targetingGroups.stream()
-                        .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
-                        .collect(Collectors.toList());
+                // Use TargetingEvaluator class to help filter out
+                // the ads that a customer is not eligible for.
+                // TargetingEvaluator constructor requires a RequestContext object
+                // You can construct a RequestContext object with its required parameters
+                TargetingEvaluator targetingEvaluator
+                        = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
 
-                Optional<TargetingGroup> firstEligibleTargetingGroup = targetingGroupsSorted.stream()
+                // Filter all the eligible Targeting Groups
+                // Then sort it by CTR, then find the first eligible Targeting Group
+                Optional<TargetingGroup> firstEligibleTargetingGroup = targetingGroups.stream()
                         .filter(targetingGroup -> targetingEvaluator.evaluate(targetingGroup).equals(TargetingPredicateResult.TRUE))
+                        .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
                         .findFirst();
 
                 // Then randomly return one of the ads that the customer is eligible for (if any).
