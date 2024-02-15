@@ -46,9 +46,11 @@ public class AdvertisementSelectionLogic {
     }
 
     /**
-     * Gets all of the content and metadata for the marketplace and determines which content can be shown.  Returns the
-     * eligible content with the highest click through rate.  If no advertisement is available or eligible, returns an
-     * EmptyGeneratedAdvertisement.
+     * Gets all the content and metadata for the marketplace
+     * and determines which content can be shown.
+     * Returns the eligible content with the highest CTR.
+     * If no advertisement is available or eligible,
+     * returns an EmptyGeneratedAdvertisement.
      *
      * @param customerId - the customer to generate a custom advertisement for
      * @param marketplaceId - the id of the marketplace the advertisement will be rendered on
@@ -57,6 +59,13 @@ public class AdvertisementSelectionLogic {
      */
     public GeneratedAdvertisement selectAdvertisement(String customerId, String marketplaceId) {
         GeneratedAdvertisement generatedAdvertisement = new EmptyGeneratedAdvertisement();
+        /*
+- only select ads that the customer is eligible for based on the ad content's `TargetingGroup`.
+- Use streams to filter out ads that the customer is not eligible for
+    based on the ad content's `TargetingGroup`.
+- Randomly select one of the eligible ads and return it.
+If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
+         */
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
         } else {
