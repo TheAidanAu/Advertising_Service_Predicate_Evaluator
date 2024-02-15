@@ -1,17 +1,22 @@
 package com.amazon.ata.advertising.service.businesslogic;
 
 import com.amazon.ata.advertising.service.dao.ReadableDao;
+import com.amazon.ata.advertising.service.dao.TargetingGroupDao;
 import com.amazon.ata.advertising.service.model.AdvertisementContent;
 import com.amazon.ata.advertising.service.model.EmptyGeneratedAdvertisement;
 import com.amazon.ata.advertising.service.model.GeneratedAdvertisement;
+import com.amazon.ata.advertising.service.model.RequestContext;
+import com.amazon.ata.advertising.service.targeting.TargetingEvaluator;
 import com.amazon.ata.advertising.service.targeting.TargetingGroup;
 
+import com.amazon.ata.advertising.service.targeting.predicate.TargetingPredicateResult;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 
 /**
@@ -65,17 +70,60 @@ public class AdvertisementSelectionLogic {
     based on the ad content's `TargetingGroup`.
 - Randomly select one of the eligible ads and return it.
 If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
+
+// update this method so this it randomly selects and add that the customer is eligible for
+// need to use the customerId parameter
          */
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
         } else {
             final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
+            // AdvertisementContent attributes:contentId, renderableContent, marketplaceId
 
             if (CollectionUtils.isNotEmpty(contents)) {
-                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
-                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
+                // Use TargetingEvaluator class to help filter out
+                // the ads that a customer is not eligible for.
+                // TargetingEvaluator constructor requires a RequestContext object
+                // You can construct a RequestContext object with its required parameters
+                TargetingEvaluator targetingEvaluator
+                        = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+
+                List<String> contentIds = contents.stream()
+                        .map(AdvertisementContent::getContentId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // TargetingGroup attribute: targetingGroupId, contentId, clickThroughRate,
+                //                          List<TargetingPredicate> targetingPredicates
+                List<TargetingGroup> targetingGroups = new ArrayList<>();
+                for (String contentId: contentIds) {
+                    targetingGroups.addAll(targetingGroupDao.get(contentId));
+                }
+
+                List<TargetingGroup> targetingGroupsSorted = targetingGroups.stream()
+                        .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
+                        .collect(Collectors.toList());
+
+                Optional<TargetingGroup> firstEligibleTargetingGroup = targetingGroupsSorted.stream()
+                        .filter(targetingGroup -> targetingEvaluator.evaluate(targetingGroup).equals(TargetingPredicateResult.TRUE))
+                        .findFirst();
+
+                // Then randomly return one of the ads that the customer is eligible for (if any).
+                if (firstEligibleTargetingGroup.isPresent()) {
+                    for (AdvertisementContent content: contents) {
+                        if (firstEligibleTargetingGroup.get().getContentId().equals(content.getContentId())) {
+                            return new GeneratedAdvertisement(content);
+                        }
+                    }
+
+                }
             }
 
+//old code
+            //            if (CollectionUtils.isNotEmpty(contents)) {
+//                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
+//                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
+//            }
         }
 
         return generatedAdvertisement;
