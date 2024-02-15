@@ -14,6 +14,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 
 /**
@@ -51,14 +53,27 @@ public class AddTargetingGroupActivity {
             requestedTargetingPredicates,
             contentId));
 
+        // Use streams when converting the TargetingPredicates
+        // from the Coral model to its internal model,
+        // e.g. map() to transform the TargetingPredicates and
+        // collect to accumulate the results into the internal model.
+        // targetingPredicates is the final collection
         List<TargetingPredicate> targetingPredicates = new ArrayList<>();
         if (requestedTargetingPredicates != null) {
-            for (com.amazon.ata.advertising.service.model.TargetingPredicate targetingPredicate :
-                requestedTargetingPredicates) {
-                TargetingPredicate predicate = TargetingPredicateTranslator.fromCoral(targetingPredicate);
-                targetingPredicates.add(predicate);
-            }
+            targetingPredicates = requestedTargetingPredicates.stream()
+                    .map(TargetingPredicateTranslator::fromCoral)
+                    .collect(Collectors.toList());
         }
+
+        // old code using for-loop
+//        List<TargetingPredicate> targetingPredicates = new ArrayList<>();
+//        if (requestedTargetingPredicates != null) {
+//            for (com.amazon.ata.advertising.service.model.TargetingPredicate targetingPredicate :
+//                requestedTargetingPredicates) {
+//                TargetingPredicate predicate = TargetingPredicateTranslator.fromCoral(targetingPredicate);
+//                targetingPredicates.add(predicate);
+//            }
+//        }
 
         TargetingGroup targetingGroup = targetingGroupDao.create(contentId, targetingPredicates);
 
