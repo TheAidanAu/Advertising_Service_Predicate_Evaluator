@@ -70,9 +70,6 @@ public class AdvertisementSelectionLogic {
     based on the ad content's `TargetingGroup`.
 - Randomly select one of the eligible ads and return it.
 If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
-
-// update this method so this it randomly selects and add that the customer is eligible for
-// need to use the customerId parameter
          */
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
@@ -106,6 +103,7 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
                     .sorted(Comparator.comparing(TargetingGroup::getClickThroughRate).reversed())
                     .findFirst();
 
+            // Once you get a Targeting Group, you can try to get an ad via its contentId
             // Then randomly return one of the ads that the customer is eligible for (if any).
             // Since it's an Optional, you need to check the wrapper box before opening it,
             // otherwise there'll be an exception
@@ -114,6 +112,8 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
                 String contentId = firstEligibleTargetingGroup.get().getContentId();
                 for (AdvertisementContent content: contents) {
                     if (content.getContentId().equals(contentId)) {
+                        // GeneratedAdvertisement is the return type of this method
+                        // and its constructor takes an ad content parameter
                         return new GeneratedAdvertisement(content);
                     }
                 }
