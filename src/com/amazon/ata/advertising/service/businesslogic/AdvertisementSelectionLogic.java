@@ -68,7 +68,6 @@ public class AdvertisementSelectionLogic {
 - only select ads that the customer is eligible for based on the ad content's `TargetingGroup`.
 - Use streams to filter out ads that the customer is not eligible for
     based on the ad content's `TargetingGroup`.
-- Randomly select one of the eligible ads and return it.
 If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
          */
         if (StringUtils.isEmpty(marketplaceId)) {
@@ -104,7 +103,7 @@ If there are no eligible ads, return an `EmptyGeneratedAdvertisement`.
                     .findFirst();
 
             // Once you get a Targeting Group, you can try to get an ad via its contentId
-            // Then randomly return one of the ads that the customer is eligible for (if any).
+            // This ad has the highest CTR which is also eligible to show to the customer (if any).
             // Since it's an Optional, you need to check the wrapper box before opening it,
             // otherwise there'll be an exception
             if (firstEligibleTargetingGroup.isPresent()) {
