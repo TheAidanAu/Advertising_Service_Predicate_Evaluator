@@ -18,7 +18,7 @@ public class TargetingEvaluator {
     public static final boolean IMPLEMENTED_STREAMS = true;
     public static final boolean IMPLEMENTED_CONCURRENCY = true;
     private final RequestContext requestContext;
-    private boolean allTruePredicates = true; //need to add this as an attribute
+    private boolean allTruePredicates; //need to add this as an attribute
 
     /**
      * Creates an evaluator for targeting predicates.
@@ -38,23 +38,39 @@ public class TargetingEvaluator {
         allTruePredicates = true; //assume it's true initially
         List<TargetingPredicate> targetingPredicates = targetingGroup.getTargetingPredicates();
         ExecutorService executor = Executors.newCachedThreadPool();
+        for (TargetingPredicate predicate: targetingPredicates) {
+            executor.submit(
+                    // This line starts a lambda expression that takes no arguments and returns void.
+                    // run of this as the run() method in a class which implements Runnable interface
+                    () -> {
+                        // submit each evaluation
+                        // if any of the evaluation is false
+                        if (predicate.evaluate(this.requestContext)
+                                .equals(TargetingPredicateResult.FALSE)) {
+                            this.allTruePredicates = false;
+                            // as soon as we have a false, it's evaluated as false overall
+                            // we can exit and return that false value
+                            executor.shutdownNow();
+                        }
+                    });
+        }
         // This line starts a loop over each TargetingPredicate in the targetingPredicates list,
         // executing the code within the lambda expression for each predicate.
         // think of this as , for each predicate, do this ->
-        targetingPredicates.forEach(predicate -> executor.submit(
-                // This line starts a lambda expression that takes no arguments and returns void.
-                () -> {
-                    // submit each evaluation
-                    // if any of the evaluation is false
-                    if (predicate.evaluate(this.requestContext)
-                            .equals(TargetingPredicateResult.FALSE)) {
-                        this.allTruePredicates = false;
-                        // as soon as we have a false, it's evaluated as false overall
-                        // we can exit and return that false value
-                        executor.shutdownNow();
-                    }
-                }
-        ));
+//        targetingPredicates.forEach(predicate -> executor.submit(
+//                // This line starts a lambda expression that takes no arguments and returns void.
+//                () -> {
+//                    // submit each evaluation
+//                    // if any of the evaluation is false
+//                    if (predicate.evaluate(this.requestContext)
+//                            .equals(TargetingPredicateResult.FALSE)) {
+//                        this.allTruePredicates = false;
+//                        // as soon as we have a false, it's evaluated as false overall
+//                        // we can exit and return that false value
+//                        executor.shutdownNow();
+//                    }
+//                }
+//        ));
 
         // if allTruePredicates is false,
         // since the executor would've been shut down already,
